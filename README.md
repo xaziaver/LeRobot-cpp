@@ -1,5 +1,5 @@
 # LeRobot-CPP
-A C++ recreation of Hugging Face's LeRobot for robotics AI learning.
+A C++ recreation of Hugging Face's LeRobot for robotics AI learning (https://github.com/huggingface/lerobot)
 
 ## Setup
 - Run `./setup.sh` to install LibTorch
@@ -8,3 +8,4 @@ A C++ recreation of Hugging Face's LeRobot for robotics AI learning.
 
 ## Status
 Work in progress
+
