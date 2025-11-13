@@ -8,7 +8,7 @@ find_package(Parquet REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
-add_executable(lerobot src/dataset.h src/dataset.cpp)
+add_executable(lerobot src/main.cpp src/dataset.h src/dataset.cpp)
 target_link_libraries(lerobot PRIVATE
     "${TORCH_LIBRARIES}"
     opencv_core opencv_videoio

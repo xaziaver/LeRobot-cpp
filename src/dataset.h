@@ -14,66 +14,58 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <map>
+#include <unordered_map>
 
 namespace fs = std::filesystem;
 
 // represents a single data sample
 struct Frame {
-  // images(s) - for now keep only the *current* frame
-  // later add a std::map<float,cv::Mat> for delta timestamps
-  cv::Mat image;
+  // images at different delta timestamps
+  std::map<float, cv::Mat> images;  // key = delta seconds
 
-  // state/action are plan float tensors (LeRobot uses float32)
   torch::Tensor state;
   torch::Tensor action;
+  int64_t episode_index = -1;
+  int64_t frame_index = -1;
+  double timestamp = 0.0;
 };
 
-// LeRobotDataset encapsulates 3 main files:
-// (1) hf_dataset, to read any value from parquet files
-// (2) metadata:
-//  - info: various info about dataset like shapes, keys, fps
-//  - stats: dataset statistics of modalities for normalization
-//  - tasks: prompts for each task of the dataset (task-conditioned training)
-// (3) videos (optional) from which frames are loaded to be synchronous with data
-//     from parquet files
-class LeRobotDataset : public
-torch::data::datasets::Dataset<LeRobotDataset, Frame> {
-  // initialize data: two options
-  // (1) dataset exists on local disk
-  // (2) dataset on Hugging Face Hub at https://huggingface.co/datasets/{repo_id}
-
-  // EXAMPLE FILE: at ~/Code/LeRobot-cpp/data/pusht
-  // files downloaded directly, file structure is:
-  //  pusht
-  //      ├── data
-  //      │   └── chunk-000
-  //      │       └── file-000.parquet
-  //      ├── meta
-  //      │   ├── episodes
-  //      │   │   └── chunk-000
-  //      │   │       └── file-000.parquet
-  //      │   ├── info.json
-  //      │   ├── stats.json
-  //      │   └── tasks.parquet
-  //      └── videos
-  //          └── observation.image
-  //              └── chunk-000
-  //                  └── file-000.mp4
+class LeRobotDataset
+  : public torch::data::datasets::Dataset<LeRobotDataset, Frame> {
 public:
-  // constructor - loads the *single* parquet file that lives under
-  // <root>/data/chunk-000/file-000.parquet
-  explicit LeRobotDataset(const std::string& root_path);
+  explicit LeRobotDataset(const std::string& root_path,
+			  const std::map<std::string, std::vector<float>>& delta_timestamps = {});
 
   // torch::data::Dataset API
   Frame get(size_t index) override;
-  c10::optional<size_t> size() const override { return table_->num_rows(); }
+  c10::optional<size_t> size() const override { return total_frames_; }
 
-  // Helper utilities
-  void print_column_names () const;
-  const std::shared_ptr<arrow::Table>& arrow_table() const { return table_; }
+  //void print_column_names () const;
+  size_t num_episodes() const { return episode_starts_.size(); }
   
  private:
-  std::shared_ptr<arrow::Table> table_;     // the whole parquet fi
-  fs::path parquet_path_;                   // full path to the .parquet file
-  nlohmann::json meta_;                     // meta/info.json
+  // --- Data ---
+  std::vector<std::shared_ptr<arrow::Table>> tables_;     // one per chunk
+  std::vector<size_t> chunk_frame_counts_;                // frames per chunk
+  size_t total_frames_ = 0;
+
+  // --- Episode indexing ---
+  std::vector<size_t> episode_starts_;  // global index of first frame in episode
+
+  // --- Video ---
+  std::unordered_map<std::string, cv::VideoCapture> video_captures_;  // path → capture
+  double fps_ = 30.0;
+
+  // --- Delta timestamps ---
+  std::map<std::string, std::vector<float>> delta_timestamps_;
+  
+  // --- Metadata ---
+  nlohmann::json meta_;
+
+  // --- Helpers ---
+  void load_all_parquet(const fs::path& data_dir);
+  void load_video(const fs::path& video_dir);
+  void build_episode_index();
+  cv::Mat decode_frame(const std::string& video_path, double timestamp_sec);
 };

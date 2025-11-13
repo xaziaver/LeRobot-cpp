@@ -1,10 +1,12 @@
+#include "dataset.h"
+
 #include <arrow/api.h>
 #include <nlohmann/json.hpp>
 #include <opencv2/opencv.hpp>
 #include <torch/torch.h>
 #include <iostream>
 
-int main() {
+void run_tests() {
   // test 1: LibTorch
   // tensors for policy/state in LeRobot
   std::cout << "Testing LibTorch...\n";
@@ -67,6 +69,18 @@ int main() {
   // mock LeRobot meta
   nlohmann::json meta = {{"fps", 30}, {"robot_type", "arm"}};
   std::cout << "JSON meta: " << meta.dump(2) << std::endl;
-  
-  return 0;
+
 }
+
+int main() {
+  run_tests();
+  std::map<std::string, std::vector<float>> deltas = {
+    {"observation.image", {-0.1, 0.0}}
+  };
+  LeRobotDataset ds("data/pusht", deltas);
+  Frame f = ds.get(100);
+  std::cout << "Frame 100: state = " << f.state << "\n";
+  cv::imwrite("past.png", f.images[-0.1]);
+  cv::imwrite("now.png", f.images[0.0]);
+}
+
