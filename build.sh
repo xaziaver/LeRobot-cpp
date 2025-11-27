@@ -20,5 +20,5 @@ cmake --build . --config Release -j$(nproc)
 
 echo ""
 echo "Build successful!"
-echo "Run: ./train"
-echo "Or with libraries: LD_LIBRARY_PATH=$HOME/libtorch/lib ./train"
+echo "Run: build/train"
+echo "Or with libraries: LD_LIBRARY_PATH=$HOME/libtorch/lib build/train"
