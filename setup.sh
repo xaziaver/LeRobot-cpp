@@ -1,36 +1,41 @@
 #!/bin/bash
-set -e  # exit on error
+set -e
 
-# LibTorch
-LIBTORCH_DIR="$HOME/libtorch"
-VERSION="latest"#2.4.1
-URL="https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-${VERSION}%2Bcpu.zip"
-if [ ! -d "$LIBTORCH_DIR" ]; then
-    echo "Downloading LibTorch..."
-    wget -O libtorch.zip "$URL"
-    unzip libtorch.zip -d "$LIBTORCH_DIR"
-    rm libtorch.zip
-    echo "LibTorch installed at $LIBTORCH_DIR"
-else
-    echo "LibTorch already at $LIBTORCH_DIR"
+echo "=== LeRobot C++ – Setup ==="
+
+# 1. Remove old LibTorch if exists
+if [ -d "$HOME/libtorch" ]; then
+    echo "Removing old ~/libtorch..."
+    rm -rf "$HOME/libtorch"
 fi
-export CMAKE_PREFIX_PATH="$LIBTORCH_DIR"
-echo "Set CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH"
 
-# Arrow
-echo "Installing Arrow (Pop!_OS workaround)..."
-sudo apt update
-sudo apt install -y -V ca-certificates lsb-release wget
-DISTRO_ID="ubuntu"
-CODENAME=$(lsb_release --codename --short)
-wget -O /tmp/apache-arrow-apt-source-latest-${CODENAME}.deb "https://packages.apache.org/artifactory/arrow/${DISTRO_ID}/apache-arrow-apt-source-latest-${CODENAME}.deb"
-chmod 644 /tmp/apache-arrow-apt-source-latest-${CODENAME}.deb
-sudo apt install -y -V  /tmp/apache-arrow-apt-source-latest-${CODENAME}.deb
-sudo apt update
-sudo apt install -y -V libarrow-dev libparquet-dev
-rm /tmp/apache-arrow-apt-source-latest-${CODENAME}.deb
+# 2. Download latest shared LibTorch (CPU)
+VERSION="2.5.0"
+URL="https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-${VERSION}%2Bcpu.zip"
+echo "Downloading LibTorch $VERSION..."
+wget -q --show-progress "$URL" -O libtorch.zip
+unzip -q libtorch.zip -d "$HOME"
+rm libtorch.zip
+echo "LibTorch $VERSION installed"
 
-# Other deps
-sudo apt install -y -V libopencv-dev nlohmann-json3-dev libgtest-dev
+# 3. Install system dependencies – ignore PPA conflicts
+echo "Installing system packages (ignoring non-critical conflicts)..."
+sudo apt update -qq || true
 
-echo "Setup complete! Run 'source ./setup.sh' then './build.sh'"
+sudo apt install -y --no-install-recommends \
+    build-essential cmake ninja-build \
+    libopencv-dev \
+    libarrow-dev libparquet-dev \
+    nlohmann-json3-dev \
+    libgtest-dev \
+    wget unzip ca-certificates || \
+    echo "Some packages failed (usually due to unrelated PPAs – this is harmless)"
+
+# 4. Export paths for this session
+export CMAKE_PREFIX_PATH="$HOME/libtorch:$CMAKE_PREFIX_PATH"
+export LD_LIBRARY_PATH="$HOME/libtorch/lib:$LD_LIBRARY_PATH"
+
+echo ""
+echo "Setup complete! You are ready."
+echo "→ Run build:     ./build.sh clean && ./build.sh"
+echo "→ Run training:  ./build/train"

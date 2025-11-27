@@ -78,8 +78,9 @@ int main() {
     {"observation.image", {-0.1, 0.0}}
   };
   LeRobotDataset ds("data/pusht", deltas);
-  Frame f = ds.get(100);
-  std::cout << "Frame 100: state = " << f.state << "\n";
+  int frame_num = 100;
+  Frame f = ds.get(frame_num);
+  std::cout << "Frame " << frame_num << " state = " << f.state << "\n";
   cv::imwrite("past.png", f.images[-0.1]);
   cv::imwrite("now.png", f.images[0.0]);
 }
